@@ -35,7 +35,7 @@ const check = process.argv.includes('--check')
 const offline = process.argv.includes('--offline')
 
 /** Locate the orx executable: $ORX_BIN, then PATH, then the Windows app install. */
-function findOrx() {
+export function findOrx() {
   const explicit = process.env.ORX_BIN
   if (explicit && existsSync(explicit)) return explicit
   const names = process.platform === 'win32' ? ['orx.exe', 'orx.cmd', 'orx'] : ['orx']

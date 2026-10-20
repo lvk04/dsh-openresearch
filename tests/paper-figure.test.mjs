@@ -51,6 +51,16 @@ test('--help exits cleanly and prints usage', () => {
   assert.match(output, /--arxiv <id> --figure <n> --out <png>/)
 })
 
+test('--help still works when uv is missing', () => {
+  // Regression: the uv lookup used to run first, so asking a tool what it does
+  // failed on any machine without its dependency installed.
+  const output = execFileSync(process.execPath, [WRAPPER, '--help'], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: '', UV_BIN: '' },
+  })
+  assert.match(output, /--arxiv <id> --figure <n> --out <png>/)
+})
+
 test('cropping picks the art cluster nearest the caption', (t) => {
   const uv = findUv()
   if (!uv) {

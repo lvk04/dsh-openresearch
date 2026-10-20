@@ -10,9 +10,9 @@
  *
  * Usage:
  *   node scripts/paper-figure.mjs --arxiv 2610.07659 --list
- *   node scripts/paper-figure.mjs --arxiv 2610.07659 --figure 1 --out paper/figure1.png
- *   node scripts/paper-figure.mjs --pdf C:\path\to.pdf --page 6 --out page6.png
- *   node scripts/paper-figure.mjs --pdf C:\path\to.pdf --page 6 --box 40,80,380,300 --out crop.png
+ *   node scripts/paper-figure.mjs --arxiv 2610.07659 --figure 1 --out artifacts/<topic>/figures/fig1.png
+ *   node scripts/paper-figure.mjs --pdf C:\path\to.pdf --page 6 --out artifacts/<topic>/figures/page6.png
+ *   node scripts/paper-figure.mjs --pdf C:\path\to.pdf --page 6 --box 40,80,380,300 --out artifacts/<topic>/figures/crop.png
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -37,6 +37,25 @@ function findUv() {
   return undefined
 }
 
+// Help comes before the uv lookup on purpose: asking what a tool does must not
+// require the tool's dependency to be installed.
+const args = process.argv.slice(2)
+if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+  console.log(
+    [
+      'Usage:',
+      '  node scripts/paper-figure.mjs --arxiv <id> --list',
+      '  node scripts/paper-figure.mjs --arxiv <id> --figure <n> --out <png> [--dpi 200]',
+      '  node scripts/paper-figure.mjs --pdf <path> --page <n> --out <png>',
+      '  node scripts/paper-figure.mjs --pdf <path> --page <n> --box x0,y0,x1,y1 --out <png>',
+      '',
+      'Needs `uv` on PATH (or UV_BIN); pymupdf and Pillow are supplied through',
+      '`uv run --isolated` and never installed into the harness Python.',
+    ].join('\n'),
+  )
+  process.exit(0)
+}
+
 const uv = findUv()
 if (!uv) {
   console.error(
@@ -52,20 +71,6 @@ if (!uv) {
     ].join('\n'),
   )
   process.exit(1)
-}
-
-const args = process.argv.slice(2)
-if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
-  console.log(
-    [
-      'Usage:',
-      '  node scripts/paper-figure.mjs --arxiv <id> --list',
-      '  node scripts/paper-figure.mjs --arxiv <id> --figure <n> --out <png> [--dpi 200]',
-      '  node scripts/paper-figure.mjs --pdf <path> --page <n> --out <png>',
-      '  node scripts/paper-figure.mjs --pdf <path> --page <n> --box x0,y0,x1,y1 --out <png>',
-    ].join('\n'),
-  )
-  process.exit(0)
 }
 
 // pymupdf renders the crop; Pillow trims the uniform white border afterwards.

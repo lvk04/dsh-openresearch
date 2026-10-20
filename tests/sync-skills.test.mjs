@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { frontmatter, moduleNames, normalize } from '../scripts/sync-skills.mjs'
+import { findOrx, frontmatter, moduleNames, normalize } from '../scripts/sync-skills.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -54,15 +54,46 @@ test('normalize collapses CRLF and trailing blank lines', () => {
   assert.equal(normalize('a\nb'), 'a\nb\n')
 })
 
-test('skills/ on disk matches the installed orx build', () => {
+test('skills/ on disk matches the installed orx build', (t) => {
   // Integration check: this is the same gate CI runs, and it catches a stale
   // build after an orx upgrade as well as a hand-edit to a generated skill.
+  // Freshness cannot be judged without the CLI, so say so instead of failing:
+  // the offline gate below is the one every environment can run.
+  try {
+    findOrx()
+  } catch {
+    t.skip('orx is not installed here; freshness needs the CLI')
+    return
+  }
   const node = process.execPath
   const output = execFileSync(node, [join(ROOT, 'scripts', 'sync-skills.mjs'), '--check'], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   assert.match(output, /skills\/ matches orx/)
+})
+
+test('freshness check without orx fails with an actionable message', () => {
+  // Guards the skip above: absent orx must be a clear error, not a crash or a
+  // silent pass. PATH is emptied and the Windows app fallback is pointed at an
+  // empty directory so the lookup cannot find a real install on this machine.
+  const empty = mkdtempSync(join(tmpdir(), 'dsh-orx-no-orx-'))
+  try {
+    let failed
+    try {
+      execFileSync(process.execPath, [join(ROOT, 'scripts', 'sync-skills.mjs'), '--check'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, PATH: '', ORX_BIN: '', LOCALAPPDATA: empty },
+      })
+    } catch (error) {
+      failed = String(error.stderr ?? '')
+    }
+    assert.ok(failed !== undefined, 'check must fail without orx')
+    assert.match(failed, /orx not found/)
+  } finally {
+    rmSync(empty, { recursive: true, force: true })
+  }
 })
 
 test('offline integrity check passes on the committed tree', () => {

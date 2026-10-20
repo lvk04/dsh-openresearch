@@ -29,9 +29,16 @@ jobs:
           version: 10
           standalone: true
 
+      # The figure cropper shells out to `uv run --isolated`; without uv its
+      # tests skip, which is exactly how a cross-platform cropper breaks without
+      # anyone noticing. Installing it here makes those tests run for real.
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       # Integrity only: proves the committed skills/ still matches MANIFEST.
-      # The freshness check against a live `orx` binary is not reproducible in
-      # CI, so it stays a local/publish-time gate.
+      # Freshness needs the real orx CLI, which is not installed in this job, so
+      # the suite skips that one check here and the job below covers it.
       - name: Verify built skills match MANIFEST
         run: node scripts/sync-skills.mjs --check --offline
 
