@@ -7,8 +7,8 @@ on:
 
 jobs:
   test:
-    # Windows is included because the install path and the `orx.cmd` shim are
-    # platform-specific; ubuntu covers the plain-PATH case.
+    # Windows is included because the skill builder has platform-specific
+    # lookup and batch-spawning paths; ubuntu covers the plain-PATH case.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,20 +21,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-
-      # The bundle-mode tests install this package into a throwaway profile, so
-      # they skip without pnpm rather than passing vacuously.
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          standalone: true
-
-      # The figure cropper shells out to `uv run --isolated`; without uv its
-      # tests skip, which is exactly how a cross-platform cropper breaks without
-      # anyone noticing. Installing it here makes those tests run for real.
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
 
       # Integrity only: proves the committed skills/ still matches MANIFEST.
       # Freshness needs the real orx CLI, which is not installed in this job, so
@@ -52,9 +38,6 @@ jobs:
           if ($code -ne 0) {
             Select-String -Path test-output.tap -Pattern '^\s*not ok' |
               ForEach-Object { Write-Host "::error::$($_.Line.Trim())" }
-            $detail = Select-String -Path test-output.tap -Pattern "error:|expected:|actual:|at .*\.mjs" |
-              Select-Object -First 30
-            $detail | ForEach-Object { Write-Host $_.Line }
           }
           exit $code
 

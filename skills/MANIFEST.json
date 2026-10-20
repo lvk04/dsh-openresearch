@@ -92,8 +92,8 @@
     {
       "name": "openresearch-dsh",
       "description": "DeepSeek Harness conventions for OpenResearch work: where the artifacts directory is, how to cite runs and files as clickable evidence in DSH chat, which Python to use, and where the OpenResearch dashboard lives. Read before the orx-* skills when a task produces files, figures, or measured results.",
-      "bytes": 5945,
-      "sha256": "082495526c0906591369ebd672a2b9e7aab7f63558864fc63cde5ed67908ac59"
+      "bytes": 5999,
+      "sha256": "af1754417d18e21b4492b9e1f26a0be8364bba0feea3b4e60b1f7c12b440cf6b"
     }
   ]
 }

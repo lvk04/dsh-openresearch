@@ -62,13 +62,11 @@ When a claim rests on a paper rather than this repository, cite the paper as
 
 ## Figures
 
-Images render in DSH chat when embedded as markdown. To show an original figure
-from a paper's PDF, crop it first (never redraw results):
-
-```sh
-node <pack>/scripts/paper-figure.mjs --arxiv <id> --list
-node <pack>/scripts/paper-figure.mjs --arxiv <id> --figure 2 --out artifacts/<topic>/figures/fig2.png
-```
+Images render in DSH chat when embedded as markdown. When a claim rests on a
+figure in a paper, show the original: crop it out of the PDF, never redraw a
+result. Save it under `artifacts/<topic>/figures/`, with the script that produced
+the crop next to it, and follow the Python policy below so the crop is
+reproducible without touching the harness interpreter.
 
 Then embed it once with a caption in the title, and keep a separate link:
 
