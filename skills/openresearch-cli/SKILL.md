@@ -96,6 +96,7 @@ group below has a module (`orx skill <name>`) with the full flags and rules.
 | `orx compute [--gpu <id>] [--count <n>] [--provider <name>]` / `orx compute --cpu` | List the GPU/CPU compute catalog. |
 | `orx instance create <orgId> (--gpu <id> … \| --cpu <flavor> …)` | Spin up a standalone instance in an org; see `orx-instances`. |
 | `orx exp status/run/cancel/wait/wake <localExpId>` | Inspect, run, cancel, wait on, or register a wake-up for a local experiment node. |
+| `orx exp move/archive/unarchive <localExpId>` | Re-parent, hide, or restore experiment nodes; see `orx-experiment-tree`. |
 | `orx exp desc <expId> [--set "<text>" \| --stdin]` | Read or overwrite the experiment's description. |
 | `orx agent spawn "<task>" [--title "<t>"] [--stdin] [--no-wake]` | Delegate an independent task to a helper session; see `orx-agent-delegation`. |
 
@@ -168,7 +169,7 @@ Bundled modules (orx skill <name>):
   orx-create           Initialize a project with `orx up` and add experiment nodes with `orx create-experiment`. Use when starting a project or experiment, when the tree is empty, or when choosing a baseline, parent, or run command.
   orx-experiment-tree  Plan and drive the experiment tree: first-launch setup, fixed run contract, frozen nodes, stacked-bush tree shape, branch/launch/wait/promote, repair limits, notes, and turn summaries. Use before creating or changing experiments, launching a first run, deciding what to try next, handling a completed run, or reporting experiment progress.
   orx-git              Read, edit, commit, and diff experiment code; coordinate shared worktrees and preserve frozen branch history. Use before branch work, when starting work alongside other sessions, comparing nodes, preparing a run, repairing a provisional node, or diagnosing stale code.
-  orx-agent-delegation Delegate independent work to helper agent sessions with `orx agent spawn`: task selection, self-contained briefs, branch ownership, compute authorization, wakeups, and nesting or concurrency constraints. Use before spawning a helper or interpreting its result; do not delegate the literature retrieval loop.
+  orx-agent-delegation Create independent project chats with `orx agent spawn` using the user's New Chat settings. Covers standalone opening messages, project selection, worktrees, and compute authorization. Use before creating another chat.
   orx-compute          Launch and monitor experiment runs and route guidance for hf, modal, k8s/Kubernetes, ssh, slurm, ray, OpenResearch, Tinker, and local backends. Covers the fixed run contract, sizing, cancellation, and wait versus wake. Use before any launch or relaunch, when authoring a k8s manifest, choosing or switching compute, or handling an OOM, stall, or timeout; then read one backend reference.
   orx-instances        Create standalone OpenResearch compute instances with `orx instance create`. Use when the user wants a persistent machine for manual or ad-hoc work rather than an experiment run.
   orx-logs             Locate and read persisted experiment output with `orx logs`. Invoke when inspecting run progress, debugging a run failure, or retrieving recorded configuration and measurements; use `orx-results` to interpret the findings.

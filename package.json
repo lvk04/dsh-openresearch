@@ -19,9 +19,11 @@
   "files": [
     "src",
     "skills",
+    "skills-src",
     "scripts",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
@@ -34,14 +36,17 @@
   "scripts": {
     "sync": "node scripts/sync-skills.mjs",
     "check": "node scripts/sync-skills.mjs --check",
+    "check:offline": "node scripts/sync-skills.mjs --check --offline",
+    "test": "node --test",
     "figure": "node scripts/paper-figure.mjs",
+    "verify": "node scripts/install.mjs --verify",
     "install:live": "node scripts/install.mjs --mode live",
     "install:bundle": "node scripts/install.mjs --mode bundle",
     "status": "node scripts/install.mjs --status",
     "uninstall": "node scripts/install.mjs --uninstall"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-skill-filesystem": "*"
+    "@deepseek-ai/dsh-skill-filesystem": ">=0.1.7-rc.2"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-skill-filesystem": {

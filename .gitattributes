@@ -1,0 +1,5 @@
+# Generated skills are compared byte-for-byte by `sync-skills.mjs --check`, so a
+# CRLF checkout would report false drift. Normalize to LF everywhere.
+* text=auto eol=lf
+*.png binary
+*.pdf binary

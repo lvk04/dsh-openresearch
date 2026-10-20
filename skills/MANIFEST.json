@@ -1,77 +1,99 @@
 {
   "generatedBy": "scripts/sync-skills.mjs",
-  "orxVersion": "0.2.18",
+  "orxVersion": "0.2.19",
   "overview": "openresearch-cli",
   "modules": [
     {
       "name": "orx-create",
       "description": "Initialize a project with `orx up` and add experiment nodes with `orx create-experiment`. Use when starting a project or experiment, when the tree is empty, or when choosing a baseline, parent, or run command.",
-      "bytes": 2034
+      "bytes": 2034,
+      "sha256": "85bff624fb082afde88af055557a63e328d150c3e6e24ae6b7d555dd4319cc0c"
     },
     {
       "name": "orx-experiment-tree",
       "description": "Plan and drive the experiment tree: first-launch setup, fixed run contract, frozen nodes, stacked-bush tree shape, branch/launch/wait/promote, repair limits, notes, and turn summaries. Use before creating or changing experiments, launching a first run, deciding what to try next, handling a completed run, or reporting experiment progress.",
-      "bytes": 13630
+      "bytes": 14577,
+      "sha256": "21a133031d605451e2893ccbf11579990d597f0a0aa09ca13f5f6d856e13deda"
     },
     {
       "name": "orx-git",
       "description": "Read, edit, commit, and diff experiment code; coordinate shared worktrees and preserve frozen branch history. Use before branch work, when starting work alongside other sessions, comparing nodes, preparing a run, repairing a provisional node, or diagnosing stale code.",
-      "bytes": 2328
+      "bytes": 2328,
+      "sha256": "81708b575217090c35919b00b65dccd14dde992811d40c636e28c03784da6b67"
     },
     {
       "name": "orx-agent-delegation",
-      "description": "Delegate independent work to helper agent sessions with `orx agent spawn`: task selection, self-contained briefs, branch ownership, compute authorization, wakeups, and nesting or concurrency constraints. Use before spawning a helper or interpreting its result; do not delegate the literature retrieval loop.",
-      "bytes": 2683
+      "description": "Create independent project chats with `orx agent spawn` using the user's New Chat settings. Covers standalone opening messages, project selection, worktrees, and compute authorization. Use before creating another chat.",
+      "bytes": 1742,
+      "sha256": "e65bd5c48ce8541b505ef8c6228622c4c46d8809eece5aeab86aa8a12eaf907b"
     },
     {
       "name": "orx-compute",
       "description": "Launch and monitor experiment runs and route guidance for hf, modal, k8s/Kubernetes, ssh, slurm, ray, OpenResearch, Tinker, and local backends. Covers the fixed run contract, sizing, cancellation, and wait versus wake. Use before any launch or relaunch, when authoring a k8s manifest, choosing or switching compute, or handling an OOM, stall, or timeout; then read one backend reference.",
-      "bytes": 6856
+      "bytes": 7074,
+      "sha256": "f69bcd2fedf3ae2f42d31cee2ffb339cabdfe7cd1f0604bf4be7e7357f712648"
     },
     {
       "name": "orx-instances",
       "description": "Create standalone OpenResearch compute instances with `orx instance create`. Use when the user wants a persistent machine for manual or ad-hoc work rather than an experiment run.",
-      "bytes": 957
+      "bytes": 957,
+      "sha256": "ca43e706723fc49ebbd02c96b33540adc4c89547e295220e402bbb6ce7293023"
     },
     {
       "name": "orx-logs",
       "description": "Locate and read persisted experiment output with `orx logs`. Invoke when inspecting run progress, debugging a run failure, or retrieving recorded configuration and measurements; use `orx-results` to interpret the findings.",
-      "bytes": 994
+      "bytes": 994,
+      "sha256": "519c4a7ab25adc75202ce200d0c4a592d1a24b1a2dbeaf66cee7b0bb55e0c920"
     },
     {
       "name": "orx-results",
       "description": "Interpret and summarize measured experiment results. Invoke before reporting measured results, including summarizing a completed run, comparing runs, evaluating an outcome, or recommending a next experiment from run evidence; retrieve missing output with `orx-logs`.",
-      "bytes": 2715
+      "bytes": 2715,
+      "sha256": "9a63bec8104299a922f9c31fc3d87537ae2a54bc63b477342fe315a95b985607"
     },
     {
       "name": "orx-reports",
       "description": "Save and organize durable research outputs in the artifacts directory. Invoke when creating or reorganizing a report, exported dataset, or other deliverable; use `orx-results` for analysis and `orx-figures` when constructing charts.",
-      "bytes": 2269
+      "bytes": 2269,
+      "sha256": "0755bad53a47e7f8fe6798293d6e8c72846cc3ee3e812a3047001b7c70ec6c40"
     },
     {
       "name": "orx-figures",
       "description": "Create or update interactive HTML charts for chat and static publication figures. Invoke before writing plotting code or when an existing figure needs correction; use `orx-results` for experiment interpretation and `orx-logs` for retrieving measurements.",
-      "bytes": 16499
+      "bytes": 16499,
+      "sha256": "5d2343d468a4c6bdb0ad1c10bbd5b64b2f9ce9b69d94fecebd61d1b3fafaf711"
     },
     {
       "name": "orx-paper",
       "description": "Draft an academic paper or preprint as LaTeX. Create a .tex file in the project working tree, where it renders for the user and compiles to PDF. Use for a paper, preprint, manuscript, arXiv or submission draft, or a section of one; generic reports and result summaries belong to `orx-reports`.",
-      "bytes": 7581
+      "bytes": 7581,
+      "sha256": "9aadeb019a5e81f9a0559343aa8dfe64c430366de4a29d5819b8421d9cb8d7f3"
     },
     {
       "name": "orx-customize",
       "description": "Save reusable skills and LaTeX templates with `orx skills add` and `orx templates add`. Use when the user asks to create, import, or add a skill or template to OpenResearch for use across projects.",
-      "bytes": 1520
+      "bytes": 1520,
+      "sha256": "5574d1db33d1fa28f7722408542a968eba46aa3fcd269960f7acbee5b85fdfde"
     },
     {
       "name": "orx-lit-review",
       "description": "Explain and compare scientific or technical concepts using original research evidence. Use before answering conceptual or architectural questions, research claims, literature reviews, or related-work requests, even when no paper, citation, or search is requested. Retrieve with relevant alphaXiv, OpenAlex, bioRxiv, and PubMed connectors; scale retrieval to the question.",
-      "bytes": 15954
+      "bytes": 15954,
+      "sha256": "4f741a3e696f7e7d9d2a915be4e4522b96a27f28664bb6ac93e5f3cd0304f7ab"
     },
     {
       "name": "orx-feedback",
       "description": "Report product feedback about OpenResearch itself with `orx feedback`. Use when the user expresses frustration with an OpenResearch feature or bug, says a feature would be nice to have, or you hit a meaningful limitation or bug in the orx CLI, the agent harness, or the app. Not for research results, the user's own code, or minor nits.",
-      "bytes": 2929
+      "bytes": 3141,
+      "sha256": "4b1c4875242303b2cf67cd2325ab6bdab09eb224772e8f9660833260a0fec30b"
+    }
+  ],
+  "authored": [
+    {
+      "name": "openresearch-dsh",
+      "description": "DeepSeek Harness conventions for OpenResearch work: where the artifacts directory is, how to cite runs and files as clickable evidence in DSH chat, which Python to use, and where the OpenResearch dashboard lives. Read before the orx-* skills when a task produces files, figures, or measured results.",
+      "bytes": 5945,
+      "sha256": "082495526c0906591369ebd672a2b9e7aab7f63558864fc63cde5ed67908ac59"
     }
   ]
 }

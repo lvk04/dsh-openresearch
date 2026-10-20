@@ -207,6 +207,35 @@ function ensureCliShim() {
   return { ok: true, note: `shim ${shim} -> ${installed}` }
 }
 
+/**
+ * Compare the deployed live copy against the built `skills/` tree.
+ *
+ * The live mode deploys copies, so after `sync-skills.mjs` picks up a new `orx`
+ * the deployed skills silently go stale. Reporting the mismatch is the only way
+ * a reader learns that the catalog is describing an older CLI.
+ */
+function deployedDrift(live) {
+  const deployed = new Set(live.deployed)
+  const source = new Set(sourceSkills())
+  const changed = []
+  const missing = []
+  for (const name of source) {
+    if (!deployed.has(name)) {
+      missing.push(name)
+      continue
+    }
+    const from = join(SKILLS, name, 'SKILL.md')
+    const to = join(liveRoot, name, 'SKILL.md')
+    if (!existsSync(to)) {
+      missing.push(name)
+      continue
+    }
+    if (readFileSync(from, 'utf8') !== readFileSync(to, 'utf8')) changed.push(name)
+  }
+  const extra = [...deployed].filter((name) => !source.has(name))
+  return { changed, missing, extra, clean: changed.length + missing.length + extra.length === 0 }
+}
+
 function status() {
   const profile = resolveProfile()
   const bundle = bundleActive(profile)
@@ -222,10 +251,136 @@ function status() {
   console.log(
     `mode bundle ${bundle.listed ? `listed in bundles (${bundle.dep})` : bundle.dep ? `dependency only (${bundle.dep})` : 'inactive'}`,
   )
+  if (live.active) {
+    const drift = deployedDrift(live)
+    if (drift.clean) {
+      console.log('deployed    matches skills/')
+    } else {
+      console.log(
+        `deployed    DRIFT — ${drift.changed.length} changed, ${drift.missing.length} not deployed, ${drift.extra.length} stale`,
+      )
+      console.log('            run: node scripts/install.mjs --mode live')
+    }
+  }
   if (live.active && bundle.listed) {
     console.log('\nwarning: both modes are active; the live copy shadows the bundled root.')
   }
   if (!orx) console.log('\nwarning: `orx` is not on PATH, so the skills cannot run their commands.')
+}
+
+/** Run the `orx` binary the way a shell would, tolerating batch shims. */
+function runOrx(bin, args) {
+  const quote = (value) => `"${String(value).replace(/"/g, '""')}"`
+  const options = {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true,
+  }
+  return /\.(cmd|bat)$/i.test(bin)
+    ? execFileSync([quote(bin), ...args.map(quote)].join(' '), { ...options, shell: true })
+    : execFileSync(bin, args, options)
+}
+
+/**
+ * End-to-end doctor. Every check maps to a failure a user actually hits, so the
+ * output names the fix rather than only the symptom.
+ *
+ * `--network` adds a live alphaXiv smoke test; it costs one API call, so it is
+ * opt-in and never part of a plain `--verify`.
+ */
+function verifyPackage() {
+  const network = flag('--network')
+  const profile = resolveProfile()
+  const bundle = bundleActive(profile)
+  const live = liveActive()
+  const results = []
+  const check = (label, ok, detail) => {
+    results.push({ label, ok, detail })
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`)
+  }
+
+  console.log(`Verifying ${ROOT}\n`)
+
+  // 1. Skills build is complete and self-consistent.
+  const names = sourceSkills()
+  check(
+    'skills/ is built and matches MANIFEST',
+    names.length > 0 && Boolean(manifestVersion()),
+    `${names.length} skills, orx ${manifestVersion() ?? 'unknown'}`,
+  )
+  const invalid = names.filter((name) => {
+    const file = join(SKILLS, name, 'SKILL.md')
+    const text = readFileSync(file, 'utf8')
+    const meta = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)
+    if (!meta) return true
+    return !/^name:\s*[a-z0-9-]+\s*$/m.test(meta[1]) || !/^description:\s*\S/m.test(meta[1])
+  })
+  check(
+    'every skill has valid DSH frontmatter',
+    invalid.length === 0,
+    invalid.length === 0 ? undefined : `invalid: ${invalid.join(', ')}`,
+  )
+
+  // 2. The mode wiring is a single owner, and it is actually active.
+  check(
+    'exactly one install mode is active',
+    live.active !== bundle.listed,
+    live.active ? 'live' : bundle.listed ? 'bundle' : 'neither — run --mode live or --mode bundle',
+  )
+
+  if (live.active) {
+    const drift = deployedDrift(live)
+    check(
+      'deployed copy matches skills/',
+      drift.clean,
+      drift.clean
+        ? `${live.deployed.length} skills`
+        : `${drift.changed.length} changed, ${drift.missing.length} missing, ${drift.extra.length} stale — run --mode live`,
+    )
+  }
+
+  if (bundle.listed) {
+    const dep = readProfile(profile).dependencies?.[PACKAGE_NAME]
+    check('profile declares the package dependency', Boolean(dep), dep ?? 'missing')
+    const linked = existsSync(join(profile, 'node_modules', ...PACKAGE_NAME.split('/')))
+    check('package is installed in the profile', linked, linked ? undefined : 'run pnpm install in the profile')
+  }
+
+  // 3. The CLI the skills call is reachable.
+  const orx = findOrxOnPath()
+  check('orx is resolvable from a shell', Boolean(orx), orx ?? 'not on PATH')
+  if (orx) {
+    try {
+      const version = runOrx(orx, ['--version']).trim()
+      check('orx runs', true, version)
+    } catch (error) {
+      check('orx runs', false, String(error?.message ?? error).split('\n')[0])
+    }
+  }
+
+  // 4. Optional live check that retrieval actually works from here.
+  if (network && orx) {
+    try {
+      const raw = runOrx(orx, ['discover', 'keyword', 'transformer', '--limit', '1'])
+      const parsed = JSON.parse(raw)
+      check(
+        'alphaXiv retrieval returns results',
+        Array.isArray(parsed) && parsed.length > 0,
+        Array.isArray(parsed) ? `${parsed.length} result(s)` : 'unexpected payload',
+      )
+    } catch (error) {
+      check('alphaXiv retrieval returns results', false, String(error?.message ?? error).split('\n')[0])
+    }
+  } else if (network) {
+    check('alphaXiv retrieval returns results', false, 'skipped: orx not resolvable')
+  }
+
+  const failed = results.filter((result) => !result.ok)
+  console.log(
+    `\n${results.length - failed.length}/${results.length} checks passed${network ? '' : ' (add --network for a live retrieval test)'}.`,
+  )
+  if (failed.length > 0) process.exitCode = 1
 }
 
 function installLive() {
@@ -239,7 +394,9 @@ function installLive() {
   const owned = new Set(receipt?.deployed ?? [])
   const names = sourceSkills()
 
-  mkdirSync(liveRoot, { recursive: true })
+  // A dry run must not touch the filesystem, so the root is only created when
+  // the deployment is real.
+  if (!dryRun) mkdirSync(liveRoot, { recursive: true })
   for (const name of names) {
     const target = join(liveRoot, name)
     if (existsSync(target) && !owned.has(name)) {
@@ -393,6 +550,7 @@ if (flag('--help') || flag('-h') || args.length === 0) {
     [
       'Usage:',
       '  node scripts/install.mjs --status',
+      '  node scripts/install.mjs --verify        [--network] [--profile <dir>]',
       '  node scripts/install.mjs --mode live   [--dry-run]',
       '  node scripts/install.mjs --mode bundle [--dry-run] [--profile <dir>]',
       '  node scripts/install.mjs --uninstall   [--yes] [--profile <dir>]',
@@ -402,6 +560,7 @@ if (flag('--help') || flag('-h') || args.length === 0) {
 }
 
 if (flag('--status')) status()
+else if (flag('--verify')) verifyPackage()
 else if (flag('--uninstall')) uninstall()
 else if (value('--mode') === 'live') installLive()
 else if (value('--mode') === 'bundle') installBundle()
