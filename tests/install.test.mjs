@@ -28,8 +28,15 @@ function sandbox(t) {
     join(profile, 'package.json'),
     JSON.stringify({ name: 'dsh-profile-desktop', private: true, dependencies: {}, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } } }, null, 2),
   )
-  const dummyOrx = join(home, 'orx-dummy')
-  writeFileSync(dummyOrx, '#!/bin/sh\nexit 0\n')
+  // A runnable stand-in, so `--verify`'s "orx runs" check can pass without the
+  // real CLI. On Windows it is a .cmd, which also exercises the batch-shim path.
+  const isWindows = process.platform === 'win32'
+  const dummyOrx = join(home, isWindows ? 'orx-dummy.cmd' : 'orx-dummy')
+  writeFileSync(
+    dummyOrx,
+    isWindows ? '@echo off\r\necho orx 0.0.0-test\r\n' : '#!/bin/sh\necho "orx 0.0.0-test"\n',
+    isWindows ? {} : { mode: 0o755 },
+  )
   t.after(() => rmSync(home, { recursive: true, force: true }))
   const env = { ...process.env, DSH_HOME: home, ORX_BIN: dummyOrx }
   const run = (args) => {
@@ -155,4 +162,26 @@ test('verify fails loudly when no mode is active', (t) => {
   assert.equal(result.code, 1)
   assert.match(result.stdout, /FAIL {2}exactly one install mode is active/)
   assert.match(result.stdout, /checks passed/)
+})
+
+test('verify fails when the deployed copy no longer matches skills/', (t) => {
+  // The README promises each failure names the fix, so assert the drift failure
+  // reports the remedy rather than only the symptom.
+  const box = sandbox(t)
+  box.run(['--mode', 'live'])
+  const victim = join(box.skillsRoot, 'orx-create', 'SKILL.md')
+  writeFileSync(victim, `${readFileSync(victim, 'utf8')}\nhand edit\n`)
+  const result = box.run(['--verify'])
+  assert.equal(result.code, 1)
+  assert.match(result.stdout, /FAIL {2}deployed copy matches skills\//)
+  assert.match(result.stdout, /run --mode live/)
+})
+
+test('verify passes on a clean live install', (t) => {
+  const box = sandbox(t)
+  box.run(['--mode', 'live'])
+  const result = box.run(['--verify'])
+  assert.equal(result.code, 0)
+  assert.match(result.stdout, /deployed copy matches skills\//)
+  assert.match(result.stdout, /exactly one install mode is active — live/)
 })
