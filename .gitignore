@@ -3,23 +3,24 @@ node_modules/
 
 # This pack ships text only. Research scratch — downloaded papers, probe crops,
 # extracted text, archives — is working state and never part of the deliverable.
-.orx-cache/
-.scratch/
-paper/
-arxiv_source/
-*.pdf
-*.png
-*.jpg
-*.jpeg
-*.tar.gz
-*.zip
-extracted_*.txt
-test_write.txt
-
-# One-off probing scripts from debugging the figure cropper. Listed explicitly so
-# any *new* stray script still shows up as untracked instead of being hidden.
-crop_fig1.py
-find_bbox.py
+# Scratch is created at the repository root, so the file patterns below are
+# root-anchored on purpose: a real asset in a subdirectory (a README screenshot,
+# a figure a skill ships) is NOT ignored, so it shows up in `git status` instead
+# of being silently swallowed by a blanket `*.png`.
+/.orx-cache/
+/.scratch/
+/.paper/
+/paper/
+/arxiv_source/
+/tmp_appdata/
+/*.pdf
+/*.png
+/*.jpg
+/*.jpeg
+/*.tar.gz
+/*.zip
+/extracted_*.txt
+/test_write.txt
 
 # skills/ is a build output but IS committed: the pack must work offline, and
 # committing makes orx-version upgrades reviewable via MANIFEST hashes.
