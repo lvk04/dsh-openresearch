@@ -43,7 +43,20 @@ jobs:
         run: node scripts/sync-skills.mjs --check --offline
 
       - name: Run tests
-        run: node --test
+        shell: pwsh
+        run: |
+          # TAP is machine-readable, so a failure can be surfaced as an
+          # annotation on the job instead of only inside the log.
+          node --test --test-reporter=tap 2>&1 | Tee-Object -FilePath test-output.tap
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Select-String -Path test-output.tap -Pattern '^\s*not ok' |
+              ForEach-Object { Write-Host "::error::$($_.Line.Trim())" }
+            $detail = Select-String -Path test-output.tap -Pattern "error:|expected:|actual:|at .*\.mjs" |
+              Select-Object -First 30
+            $detail | ForEach-Object { Write-Host $_.Line }
+          }
+          exit $code
 
   skills-freshness:
     # Opt-in freshness gate: installs the real orx CLI and confirms the committed
