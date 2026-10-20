@@ -51,12 +51,18 @@ descriptions match — the same mechanism as any other skill provider.
 
 ## Prerequisites
 
-1. **OpenResearch installed**, so `orx` exists. Either install the desktop app or
+1. **DeepSeek Harness**, with its profile at `~/.dsh/profiles/desktop`. Bundle
+   installs also need **Node 22.19+ or 24+** and **pnpm** available to that
+   profile.
+2. **OpenResearch installed**, so `orx` exists. Either install the desktop app or
    the CLI (`curl -LsSf https://openresearch.sh/install.sh | sh` on macOS/Linux).
-2. **`orx` resolvable from a shell.** Every skill invokes the bare `orx` command.
-   The installer creates shims in `~/.local/bin` when `orx` is not already on
-   `PATH`; if that directory is not on `PATH` either, add the OpenResearch install
-   directory yourself.
+3. **`orx` resolvable from a shell.** Every skill invokes the bare `orx` command.
+   The installer in this repository (Methods B and C) creates shims in
+   `~/.local/bin` when `orx` is not already on `PATH`. Installing from GitHub
+   (Method A) runs no post-install step, so those users must provide `orx`
+   themselves — the desktop app's *Settings → Updates →* "Install the `orx`
+   command" is the simplest route. If `~/.local/bin` exists but is not on `PATH`,
+   add the OpenResearch install directory yourself.
 
    On Windows it writes **two** files: `orx.cmd` for cmd.exe and PowerShell (which
    resolve through `PATHEXT`) and an extensionless `orx` POSIX script for bash
@@ -74,34 +80,50 @@ node scripts/install.mjs --status
 
 ### Method A: Native DSH Bundle from GitHub (Recommended for DSH Users)
 
-Other users can install `dsh-openresearch` directly from GitHub into their DeepSeek Harness profile, exactly like **Aegis** or **whale-girl**:
+Install straight from GitHub into your DeepSeek Harness profile, the same way
+**Aegis** or **whale-girl** are installed:
 
-1. In their DSH profile `~/.dsh/profiles/desktop/package.json`, add `dsh-openresearch` to `dependencies` and `dsh.profile.bundles`:
+1. In your DSH profile at `~/.dsh/profiles/desktop/package.json`, add
+   `dsh-openresearch` to `dependencies` and to `dsh.profile.bundles`:
 
-```json
-{
-  "dependencies": {
-    "dsh-openresearch": "github:lvk04/dsh-openresearch"
-  },
-  "dsh": {
-    "profile": {
-      "bundles": [
-        "@deepseek-ai/dsh-base",
-        "@deepseek-ai/dsh-web-app",
-        "dsh-openresearch"
-      ]
+    ```json
+    {
+      "dependencies": {
+        "dsh-openresearch": "github:lvk04/dsh-openresearch"
+      },
+      "dsh": {
+        "profile": {
+          "bundles": [
+            "@deepseek-ai/dsh-base",
+            "@deepseek-ai/dsh-web-app",
+            "dsh-openresearch"
+          ]
+        }
+      }
     }
-  }
-}
-```
+    ```
 
-2. Run `pnpm install` in the profile directory:
-```sh
-cd ~/.dsh/profiles/desktop
-pnpm install
-```
+    The snippet shows only the additions — keep the entries already in your
+    `bundles` list.
 
-3. Restart DeepSeek Harness. The skills are automatically loaded by the isolated bundle provider without copying files.
+2. Install into the profile:
+
+    ```sh
+    cd ~/.dsh/profiles/desktop
+    pnpm install
+    ```
+
+    A GitHub install runs no post-install step, so `orx` must already be on
+    `PATH` (prerequisite 3).
+
+3. Restart DeepSeek Harness. `cordis.patch.yml` registers an isolated skill
+   provider rooted at the package's own `skills/` directory, so nothing is copied
+   into `~/.dsh/skills` and the two modes cannot overlap. Isolation cuts both
+   ways: those 16 skills come *only* from this package, and they disappear again
+   if you drop the bundle entry.
+
+   pnpm installs a copy, not a link — editing a checkout does not reach the
+   running app until you reinstall and restart (Method C).
 
 ---
 
@@ -132,7 +154,13 @@ Adds `dsh-openresearch` as a local `file:` dependency in the profile's `package.
 
 Set `PNPM_BIN` if `pnpm` is not on `PATH`. The install runs `pnpm` through the shell deliberately: Node cannot spawn a `.cmd` directly on Windows, and `cmd.exe` also avoids the PowerShell execution policies that block the `pnpm.ps1` shim.
 
-Bundle mode is not just wired but exercised: the tests install this package into a throwaway profile, then assert `--verify` reports it active — including that the package's own `skills/` tree actually lands in the profile's `node_modules`. The only step left unproven is the in-app mount itself, which needs the restart.
+Bundle mode is exercised end to end, not merely wired. The tests install this
+package into a throwaway profile and assert `--verify` reports it active,
+including that the package's own `skills/` tree lands in the profile's
+`node_modules`. The in-app mount has also been confirmed on Windows 11: after the
+restart, `--verify` reports `exactly one install mode is active — bundle`, and
+the provider serves skill text from `node_modules/dsh-openresearch/skills/`
+rather than from `~/.dsh/skills`.
 
 ## Update
 
@@ -169,10 +197,13 @@ node scripts/install.mjs --verify              # structural checks
 node scripts/install.mjs --verify --network    # adds a live alphaXiv call
 ```
 
-It checks that the skills build is complete and every skill has valid DSH
-frontmatter, that exactly one install mode is active, that the deployed copy
-still matches `skills/`, that the profile dependency is wired when bundle mode is
-used, and that `orx` is resolvable and runs. Each failure names the fix.
+Seven checks: the skills build is complete and matches `MANIFEST.json`; every
+skill has valid DSH frontmatter; exactly one install mode is active; in bundle
+mode the profile declares the dependency and the package is really installed in
+its `node_modules`; and `orx` is both resolvable and runnable. `--network` adds
+an eighth, a live alphaXiv retrieval, which catches a working install pointed at
+a broken network path. In live mode the deployed copies must also still match
+`skills/`. Each failure names the fix.
 
 `--status` also reports **drift**: live mode deploys copies, so after an `orx`
 upgrade the deployed skills go stale silently. Status and verify both compare
@@ -184,12 +215,13 @@ byte-for-byte and print the number of changed, missing, and stale skills.
 node --test
 ```
 
-Covers frontmatter and module-index parsing, the authored/generated merge, the
+36 tests: frontmatter and module-index parsing, the authored/generated merge, the
 offline integrity gate, installer guards (mutual exclusion, refusing to overwrite
 a foreign skill directory, idempotency, dry-run leaving no trace), receipt-driven
-uninstall, and the figure cropper against a generated PDF fixture — including the
-regression where a full-width caption made a naive text-gap search pick the
-wrong region.
+uninstall, drift detection, the bundle adapter against a stubbed host package
+(provider options, plus the missing-skills branch), and the figure cropper
+against a generated PDF fixture — including the regression where a full-width
+caption made a naive text-gap search pick the wrong region.
 
 ## Uninstall
 
@@ -199,14 +231,15 @@ node scripts/install.mjs --uninstall --yes    # applies it
 ```
 
 Removes only directories this package deployed (verified to sit under the skills
-root and to contain a `SKILL.md`) and unwires the bundle entry if present. It
+root and to contain a `SKILL.md`), unwires the bundle entry and dependency if
+present, and runs `pnpm install` so the profile's installed copy is pruned. It
 does not remove the CLI shims in `~/.local/bin` (`orx` and, on Windows,
 `orx.cmd`); delete them if you want `orx` off `PATH`.
 
 ## Platforms
 
-Development and every check in this repository runs on **Windows 11** with
-PowerShell, `cmd.exe`, and Git Bash — the shell-specific paths are:
+This pack was developed and verified on **Windows 11**, across PowerShell,
+`cmd.exe`, and Git Bash:
 
 | Concern | Windows handling |
 | --- | --- |
@@ -215,9 +248,14 @@ PowerShell, `cmd.exe`, and Git Bash — the shell-specific paths are:
 | Figure cropping | `uv` + `pymupdf`; output paths containing spaces are quoted |
 | Line endings | `.gitattributes` forces LF so a CRLF checkout cannot look like stale skills |
 
-macOS and Linux are supported by design (POSIX `~/.local/bin` shim, no
-`PATHEXT`), and CI is configured for Ubuntu, but **those paths have not been
-executed yet** — treat them as unverified until the workflow has run once.
+Executed end to end on Windows: live mode, bundle mode including the in-app
+mount, the installer (install, status, verify, uninstall), the skill builder both
+online and offline, and the figure cropper.
+
+macOS and Linux are supported by design — a POSIX `~/.local/bin` shim, no
+`PATHEXT`, `uv` for Python — and CI is configured for Ubuntu, but **those paths
+have not been executed**: no job has run yet. Treat them as unverified until the
+workflow has run once.
 
 ## Literature research on alphaXiv
 
@@ -245,16 +283,20 @@ DSH can do the same because the crop helper renders the real PDF at high DPI:
 
 ```sh
 node scripts/paper-figure.mjs --arxiv 2610.07659 --list
-node scripts/paper-figure.mjs --arxiv 2610.07659 --figure 2 --out paper/figure2.png
-node scripts/paper-figure.mjs --pdf C:\path\paper.pdf --page 6 --out paper/page6.png
-node scripts/paper-figure.mjs --pdf C:\path\paper.pdf --page 6 --box 40,80,380,300 --out crop.png
+node scripts/paper-figure.mjs --arxiv 2610.07659 --figure 2 --out artifacts/dloop/figures/fig2.png
+node scripts/paper-figure.mjs --pdf C:\path\paper.pdf --page 6 --out artifacts/dloop/figures/page6.png
+node scripts/paper-figure.mjs --pdf C:\path\paper.pdf --page 6 --box 40,80,380,300 --out artifacts/dloop/figures/crop.png
 ```
+
+Write under `artifacts/`, not a temp or `paper/` directory: that is where
+`openresearch-dsh` puts deliverables the user is expected to open later. Scratch
+work — downloads, discarded crops — belongs in `.scratch/`.
 
 It prints JSON with the output path, page, pixel size, and the caption found, so
 the agent can embed the image in chat with correct attribution:
 
 ```markdown
-![Looped vs standard speculative decoding](paper/figure2.png "Figure 2. ...")
+![Looped vs standard speculative decoding](artifacts/dloop/figures/fig2.png "Figure 2. ...")
 ```
 
 Why a helper instead of an inline script: figure geometry is fiddly on
@@ -287,8 +329,8 @@ The visual experiment-tree dashboard is OpenResearch's own: `orx up` serves it a
 ## Limitations
 
 - **No embedded GUI panel.** This pack gives the agent the workflow, not the DSH
-  sidebar. A visual tree inside DSH needs the bridge-plugin route (Option 1), not
-  this one.
+  sidebar. A visual experiment tree inside DSH needs a companion bridge plugin
+  that mounts a UI view; this pack deliberately does not.
 - **`orx` is required at runtime.** Without it the skills still load but their
   commands fail.
 - **The DSH playbook is an interpretation.** `openresearch-dsh` reconstructs what
