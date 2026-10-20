@@ -130,6 +130,10 @@ node scripts/install.mjs --mode bundle
 
 Adds `dsh-openresearch` as a local `file:` dependency in the profile's `package.json` and runs `pnpm install`. Restart DeepSeek Harness to activate.
 
+Set `PNPM_BIN` if `pnpm` is not on `PATH`. The install runs `pnpm` through the shell deliberately: Node cannot spawn a `.cmd` directly on Windows, and `cmd.exe` also avoids the PowerShell execution policies that block the `pnpm.ps1` shim.
+
+Bundle mode is not just wired but exercised: the tests install this package into a throwaway profile, then assert `--verify` reports it active — including that the package's own `skills/` tree actually lands in the profile's `node_modules`. The only step left unproven is the in-app mount itself, which needs the restart.
+
 ## Update
 
 ```sh

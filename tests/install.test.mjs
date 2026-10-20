@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
@@ -12,6 +12,24 @@ const MANIFEST = JSON.parse(readFileSync(join(ROOT, 'skills', 'MANIFEST.json'), 
 const SKILL_COUNT = readdirSync(join(ROOT, 'skills'), { withFileTypes: true }).filter(
   (entry) => entry.isDirectory(),
 ).length
+
+/**
+ * Locate `pnpm` the way the installer does. Bundle-mode tests skip when it is
+ * absent rather than pretending the mode was verified.
+ */
+function findPnpm() {
+  const explicit = process.env.PNPM_BIN
+  if (explicit && existsSync(explicit)) return explicit
+  const names = process.platform === 'win32' ? ['pnpm.cmd', 'pnpm.exe', 'pnpm'] : ['pnpm']
+  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+    if (!dir) continue
+    for (const name of names) {
+      const candidate = join(dir, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return undefined
+}
 
 /**
  * A throwaway DSH home with one profile, so installer behaviour is exercised
@@ -27,6 +45,12 @@ function sandbox(t) {
   writeFileSync(
     join(profile, 'package.json'),
     JSON.stringify({ name: 'dsh-profile-desktop', private: true, dependencies: {}, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } } }, null, 2),
+  )
+  // Mirror the real profile's pnpm settings: without `autoInstallPeers: false`
+  // and a hoisted linker, bundle-mode installs differ from the supported shape.
+  writeFileSync(
+    join(profile, 'pnpm-workspace.yaml'),
+    'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n',
   )
   // A runnable stand-in, so `--verify`'s "orx runs" check can pass without the
   // real CLI. On Windows it is a .cmd, which also exercises the batch-shim path.
@@ -184,6 +208,115 @@ test('verify passes on a clean live install', (t) => {
   assert.equal(result.code, 0)
   assert.match(result.stdout, /deployed copy matches skills\//)
   assert.match(result.stdout, /exactly one install mode is active — live/)
+})
+
+test('bundle mode wires the profile and installs the package', (t) => {
+  const pnpm = findPnpm()
+  if (!pnpm) {
+    t.skip('pnpm not available')
+    return
+  }
+
+  const home = mkdtempSync(join(tmpdir(), 'dsh-orx-bundle-'))
+  t.after(() => rmSync(home, { recursive: true, force: true }))
+  const profile = join(home, 'profiles', 'desktop')
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(
+    join(profile, 'package.json'),
+    JSON.stringify({ name: 'dsh-profile-desktop', private: true, dependencies: {}, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } } }),
+  )
+  writeFileSync(
+    join(profile, 'pnpm-workspace.yaml'),
+    'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n',
+  )
+  const dummyOrx = join(home, process.platform === 'win32' ? 'orx-dummy.cmd' : 'orx-dummy')
+  writeFileSync(
+    dummyOrx,
+    process.platform === 'win32' ? '@echo off\r\necho orx 0.0.0-test\r\n' : '#!/bin/sh\necho "orx 0.0.0-test"\n',
+    process.platform === 'win32' ? {} : { mode: 0o755 },
+  )
+
+  const env = {
+    ...process.env,
+    DSH_HOME: home,
+    ORX_BIN: dummyOrx,
+    PNPM_BIN: pnpm,
+    // Keep the package store inside the sandbox so the test cannot touch the
+    // user's real pnpm store.
+    npm_config_store_dir: join(home, '.pnpm-store'),
+  }
+
+  let result
+  try {
+    result = { code: 0, stdout: execFileSync(process.execPath, [INSTALL, '--mode', 'bundle', '--profile', profile], {
+      encoding: 'utf8',
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }) }
+  } catch (error) {
+    result = { code: error.status ?? 1, stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? '') }
+  }
+  assert.equal(result.code, 0, `bundle install failed: ${result.stderr ?? ''}`)
+
+  const wired = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
+  assert.ok(wired.dependencies['dsh-openresearch'], 'dependency declared')
+  assert.ok(wired.dsh.profile.bundles.includes('dsh-openresearch'), 'listed as a bundle')
+
+  // The whole point of bundle mode: the package's own skills tree is what the
+  // provider mounts, so it must actually exist inside the profile.
+  const installed = join(profile, 'node_modules', 'dsh-openresearch')
+  assert.ok(existsSync(join(installed, 'skills', 'MANIFEST.json')), 'skills packaged into node_modules')
+  assert.ok(existsSync(join(installed, 'cordis.patch.yml')), 'patch reachable')
+  assert.ok(existsSync(join(installed, 'src', 'index.mjs')), 'adapter reachable')
+})
+
+test('verify reports bundle mode once the profile is wired', (t) => {
+  const pnpm = findPnpm()
+  if (!pnpm) {
+    t.skip('pnpm not available')
+    return
+  }
+  const home = mkdtempSync(join(tmpdir(), 'dsh-orx-bundle-verify-'))
+  t.after(() => rmSync(home, { recursive: true, force: true }))
+  const profile = join(home, 'profiles', 'desktop')
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(
+    join(profile, 'package.json'),
+    JSON.stringify({ name: 'dsh-profile-desktop', private: true, dependencies: {}, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } } }),
+  )
+  writeFileSync(
+    join(profile, 'pnpm-workspace.yaml'),
+    'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n',
+  )
+  const dummyOrx = join(home, process.platform === 'win32' ? 'orx-dummy.cmd' : 'orx-dummy')
+  writeFileSync(
+    dummyOrx,
+    process.platform === 'win32' ? '@echo off\r\necho orx 0.0.0-test\r\n' : '#!/bin/sh\necho "orx 0.0.0-test"\n',
+    process.platform === 'win32' ? {} : { mode: 0o755 },
+  )
+  const env = {
+    ...process.env,
+    DSH_HOME: home,
+    ORX_BIN: dummyOrx,
+    PNPM_BIN: pnpm,
+    npm_config_store_dir: join(home, '.pnpm-store'),
+  }
+
+  execFileSync(process.execPath, [INSTALL, '--mode', 'bundle', '--profile', profile], {
+    encoding: 'utf8',
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  const result = execFileSync(process.execPath, [INSTALL, '--verify', '--profile', profile], {
+    encoding: 'utf8',
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  assert.match(result, /exactly one install mode is active — bundle/)
+  assert.match(result, /profile declares the package dependency/)
+  assert.match(result, /package is installed in the profile/)
+  assert.match(result, /checks passed/)
 })
 
 test('the CLI shim is written for both PowerShell/cmd and bash', (t) => {

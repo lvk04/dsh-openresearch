@@ -465,6 +465,20 @@ function installLive() {
   console.log('DSH watches this root, so the skills reach the next model step without a restart.')
 }
 
+/**
+ * Run `pnpm install` in a profile.
+ *
+ * Through the shell on purpose: Node refuses to spawn a `.cmd` directly on
+ * Windows (EINVAL), and `cmd.exe` also sidesteps PowerShell's execution policy,
+ * which blocks the `pnpm.ps1` shim on many machines. `PNPM_BIN` overrides the
+ * executable for environments with pnpm somewhere unusual.
+ */
+function runPnpm(cwd, args = ['install']) {
+  const quote = (value) => `"${String(value).replace(/"/g, '""')}"`
+  const bin = process.env.PNPM_BIN ?? 'pnpm'
+  execFileSync([quote(bin), ...args.map(quote)].join(' '), { cwd, stdio: 'inherit', shell: true })
+}
+
 function installBundle() {
   const live = liveActive()
   if (live.active) {
@@ -490,12 +504,12 @@ function installBundle() {
   if (!dryRun) {
     console.log(`\ninstalling dependencies in ${profile} …`)
     try {
-      execFileSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['install'], {
-        cwd: profile,
-        stdio: 'inherit',
-      })
+      runPnpm(profile)
     } catch {
-      fail(`pnpm install failed in ${profile}; fix it, or use --mode live instead.`)
+      fail(
+        `pnpm install failed in ${profile}; fix it, or use --mode live instead. ` +
+          'Set PNPM_BIN to a pnpm executable if pnpm is not on PATH.',
+      )
     }
   }
 
@@ -550,10 +564,7 @@ function uninstall() {
     writeProfile(profile, json)
     if (!dryRun) {
       try {
-        execFileSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['install'], {
-          cwd: profile,
-          stdio: 'inherit',
-        })
+        runPnpm(profile)
       } catch {
         console.error('warning: pnpm install failed; the profile dependency may still be installed.')
       }
