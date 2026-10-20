@@ -185,3 +185,52 @@ test('verify passes on a clean live install', (t) => {
   assert.match(result.stdout, /deployed copy matches skills\//)
   assert.match(result.stdout, /exactly one install mode is active — live/)
 })
+
+test('the CLI shim is written for both PowerShell/cmd and bash', (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'dsh-orx-shim-'))
+  t.after(() => rmSync(home, { recursive: true, force: true }))
+
+  const user = join(home, 'user')
+  const localAppData = join(home, 'localappdata')
+  const exe = join(localAppData, 'Programs', 'OpenResearch', 'orx.exe')
+  const bin = join(user, '.local', 'bin')
+  const profile = join(home, 'profiles', 'desktop')
+  mkdirSync(dirname(exe), { recursive: true })
+  mkdirSync(bin, { recursive: true })
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(exe, 'stub')
+  writeFileSync(
+    join(profile, 'package.json'),
+    JSON.stringify({ name: 'dsh-profile-desktop', private: true, dependencies: {}, dsh: { profile: { bundles: [] } } }),
+  )
+
+  const env = { ...process.env, DSH_HOME: home, HOME: user, USERPROFILE: user, LOCALAPPDATA: localAppData, PATH: bin }
+  // No ORX_BIN: the shim path must be taken, not short-circuited.
+  delete env.ORX_BIN
+
+  // This test writes into "the user's PATH directory". Confirm the child will
+  // resolve homedir() to the throwaway directory before letting it run, so a
+  // platform that ignores USERPROFILE/HOME can never touch the real one.
+  const resolvedHome = execFileSync(process.execPath, ['-e', 'process.stdout.write(require("node:os").homedir())'], {
+    encoding: 'utf8',
+    env,
+  })
+  if (resolve(resolvedHome) !== resolve(user)) {
+    t.skip(`homedir() resolves to ${resolvedHome}, not the sandbox; refusing to write shims`)
+    return
+  }
+
+  try {
+    execFileSync(process.execPath, [INSTALL, '--mode', 'live'], { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'] })
+  } catch (error) {
+    assert.fail(`install failed: ${String(error.stderr ?? error).split('\n')[0]}`)
+  }
+
+  // bash does an exact-name lookup, so the extensionless shim is what makes
+  // `orx` work in Git Bash; cmd.exe and PowerShell need the .cmd.
+  assert.ok(existsSync(join(bin, 'orx')), 'POSIX shim written')
+  assert.match(readFileSync(join(bin, 'orx'), 'utf8'), /^#!\/bin\/sh\nexec "/)
+  if (process.platform === 'win32') {
+    assert.ok(existsSync(join(bin, 'orx.cmd')), 'batch shim written')
+  }
+})

@@ -54,9 +54,15 @@ descriptions match — the same mechanism as any other skill provider.
 1. **OpenResearch installed**, so `orx` exists. Either install the desktop app or
    the CLI (`curl -LsSf https://openresearch.sh/install.sh | sh` on macOS/Linux).
 2. **`orx` resolvable from a shell.** Every skill invokes the bare `orx` command.
-   The installer creates a shim in `~/.local/bin` when `orx` is not already on
+   The installer creates shims in `~/.local/bin` when `orx` is not already on
    `PATH`; if that directory is not on `PATH` either, add the OpenResearch install
    directory yourself.
+
+   On Windows it writes **two** files: `orx.cmd` for cmd.exe and PowerShell (which
+   resolve through `PATHEXT`) and an extensionless `orx` POSIX script for bash
+   (which only runs an exact name, and would otherwise report
+   `orx: command not found` in Git Bash). Re-running the install repairs a
+   half-written set.
 
 Check the whole picture at any time:
 
@@ -190,8 +196,24 @@ node scripts/install.mjs --uninstall --yes    # applies it
 
 Removes only directories this package deployed (verified to sit under the skills
 root and to contain a `SKILL.md`) and unwires the bundle entry if present. It
-does not remove the `~/.local/bin/orx.cmd` shim; delete that file if you want
-`orx` off `PATH`.
+does not remove the CLI shims in `~/.local/bin` (`orx` and, on Windows,
+`orx.cmd`); delete them if you want `orx` off `PATH`.
+
+## Platforms
+
+Development and every check in this repository runs on **Windows 11** with
+PowerShell, `cmd.exe`, and Git Bash — the shell-specific paths are:
+
+| Concern | Windows handling |
+| --- | --- |
+| `orx` lookup | `orx.cmd` + extensionless `orx`; a `%LOCALAPPDATA%\Programs\OpenResearch\orx.exe` fallback when it is not on `PATH` |
+| Batch spawning | `.cmd` shims run through the shell as one pre-quoted string, because Node refuses to spawn a batch file directly |
+| Figure cropping | `uv` + `pymupdf`; output paths containing spaces are quoted |
+| Line endings | `.gitattributes` forces LF so a CRLF checkout cannot look like stale skills |
+
+macOS and Linux are supported by design (POSIX `~/.local/bin` shim, no
+`PATHEXT`), and CI is configured for Ubuntu, but **those paths have not been
+executed yet** — treat them as unverified until the workflow has run once.
 
 ## Literature research on alphaXiv
 

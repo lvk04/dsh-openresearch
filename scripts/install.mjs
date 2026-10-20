@@ -176,35 +176,52 @@ function findOrx() {
  * The generated skills all invoke the bare `orx` command, so an install that
  * leaves the binary off PATH produces skills that cannot act. A shim in an
  * already-PATH directory is narrower than editing the persistent user PATH and
- * is undone by deleting one file.
+ * is undone by deleting the files.
+ *
+ * On Windows both a `orx.cmd` and an extensionless `orx` are written. cmd.exe and
+ * PowerShell resolve `orx` through PATHEXT and need the `.cmd`; bash does its own
+ * PATH lookup and only ever runs an exact match, so Git Bash would report
+ * "orx: command not found" with the `.cmd` alone.
  */
 function ensureCliShim() {
-  if (findOrxOnPath()) return { ok: true, note: 'orx already resolvable from PATH' }
-  const installed = join(process.env.LOCALAPPDATA ?? '', 'Programs', 'OpenResearch', 'orx.exe')
-  if (!existsSync(installed)) return { ok: false, note: 'orx.exe not found; install OpenResearch first' }
-
   const pathDirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
   const target = pathDirs.map((dir) => resolve(dir)).find((dir) => dir === resolve(homedir(), '.local', 'bin'))
+  const resolved = findOrxOnPath()
+  const installed = join(process.env.LOCALAPPDATA ?? '', 'Programs', 'OpenResearch', 'orx.exe')
+
+  // A shim that resolves from our own directory may be incomplete: an install
+  // predating the POSIX shim has only `orx.cmd`, which bash cannot see. Repair
+  // that set. Any other resolvable orx is the user's own and is left alone.
+  const ownsShim = Boolean(resolved && target && resolve(dirname(resolved)) === resolve(target))
+  if (resolved && !ownsShim) return { ok: true, note: 'orx already resolvable from PATH' }
+  if (!existsSync(installed)) {
+    return resolved
+      ? { ok: true, note: `orx already resolvable at ${resolved}` }
+      : { ok: false, note: 'orx.exe not found; install OpenResearch first' }
+  }
   if (!target) return { ok: false, note: `no writable PATH directory for an orx shim; add ${dirname(installed)} to PATH` }
 
   mkdirSync(target, { recursive: true })
+  // A POSIX shim works for bash everywhere; on Windows the exe path uses forward
+  // slashes, which both bash and CreateProcess accept.
+  const posixExe = installed.replace(/\\/g, '/')
+  const posixBody = `#!/bin/sh\nexec "${posixExe}" "$@"\n`
+  const written = []
+
   if (process.platform === 'win32') {
-    const shim = join(target, 'orx.cmd')
-    const body = `@echo off\r\n"${installed}" %*\r\n`
-    if (dryRun) {
-      say(`would write shim ${shim}`)
-    } else {
-      writeFileSync(shim, body)
-    }
-    return { ok: true, note: `shim ${shim} -> ${installed}` }
+    const batch = join(target, 'orx.cmd')
+    const batchBody = `@echo off\r\n"${installed}" %*\r\n`
+    if (dryRun) say(`would write shim ${batch}`)
+    else writeFileSync(batch, batchBody)
+    written.push(batch)
   }
+
   const shim = join(target, 'orx')
-  if (dryRun) {
-    say(`would write shim ${shim}`)
-  } else {
-    writeFileSync(shim, `#!/bin/sh\nexec "${installed}" "$@"\n`, { mode: 0o755 })
-  }
-  return { ok: true, note: `shim ${shim} -> ${installed}` }
+  if (dryRun) say(`would write shim ${shim}`)
+  else writeFileSync(shim, posixBody, { mode: 0o755 })
+  written.push(shim)
+
+  return { ok: true, note: `shim ${written.join(' + ')} -> ${installed}` }
 }
 
 /**
