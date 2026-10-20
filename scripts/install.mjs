@@ -26,7 +26,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
-import { delimiter, dirname, join, relative, resolve, sep } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -460,7 +460,7 @@ function installLive() {
 
   const shim = ensureCliShim()
   console.log(`\nlive mode: ${names.length} skills in ${liveRoot}`)
-  console.log(`cli: ${shim.ok ? shim.note : `ACTION NEEDED  E${shim.note}`}`)
+  console.log(`cli: ${shim.ok ? shim.note : `ACTION NEEDED — ${shim.note}`}`)
   if (stale.length > 0) console.log(`removed ${stale.length} stale skill(s)`)
   console.log('DSH watches this root, so the skills reach the next model step without a restart.')
 }
@@ -479,6 +479,23 @@ function runPnpm(cwd, args = ['install']) {
   execFileSync([quote(bin), ...args.map(quote)].join(' '), { cwd, stdio: 'inherit', shell: true })
 }
 
+/**
+ * The package.json spec that points the profile at this checkout.
+ *
+ * `file:` + an absolute path looks portable but is not: pnpm 10 resolves such a
+ * spec against the profile directory on Windows, producing
+ * `<profile>\D:\...` and an ENOENT. A relative spec avoids that and works on
+ * every pnpm version. Across drives no relative path exists, so a link is the
+ * only form left — which is the honest description of a local checkout anyway:
+ * the profile sees the working tree, not a snapshot of it.
+ */
+function localDependencySpec(profile) {
+  const slash = (value) => value.replace(/\\/g, '/')
+  const rel = relative(profile, ROOT)
+  if (rel && !isAbsolute(rel)) return `file:${slash(rel)}`
+  return `link:${slash(ROOT)}`
+}
+
 function installBundle() {
   const live = liveActive()
   if (live.active) {
@@ -488,10 +505,9 @@ function installBundle() {
   }
   const profile = resolveProfile()
   const json = readProfile(profile)
-  const posix = ROOT.replace(/\\/g, '/')
 
   json.dependencies ??= {}
-  json.dependencies[PACKAGE_NAME] = `file:${posix}`
+  json.dependencies[PACKAGE_NAME] = localDependencySpec(profile)
   json.dsh ??= {}
   json.dsh.profile ??= {}
   json.dsh.profile.bundles ??= []
@@ -515,7 +531,7 @@ function installBundle() {
 
   const shim = ensureCliShim()
   console.log(`\nbundle mode: ${BUNDLE_ENTRY_ID} listed in dsh.profile.bundles`)
-  console.log(`cli: ${shim.ok ? shim.note : `ACTION NEEDED  E${shim.note}`}`)
+  console.log(`cli: ${shim.ok ? shim.note : `ACTION NEEDED — ${shim.note}`}`)
   console.log('Restart DeepSeek Harness to compose the bundle (bundles load at process start).')
 }
 

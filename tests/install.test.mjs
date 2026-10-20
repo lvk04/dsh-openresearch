@@ -260,6 +260,15 @@ test('bundle mode wires the profile and installs the package', (t) => {
 
   const wired = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
   assert.ok(wired.dependencies['dsh-openresearch'], 'dependency declared')
+  // Never `file:<absolute>`: pnpm 10 resolves that against the profile directory
+  // on Windows and dies with ENOENT on `<profile>\D:\...`. A relative spec or a
+  // link both survive; which one appears depends on whether the profile and this
+  // checkout share a drive, so the matrix exercises both.
+  assert.match(
+    wired.dependencies['dsh-openresearch'],
+    /^(file:\.\.|link:)/,
+    `portable dependency spec, got ${wired.dependencies['dsh-openresearch']}`,
+  )
   assert.ok(wired.dsh.profile.bundles.includes('dsh-openresearch'), 'listed as a bundle')
 
   // The whole point of bundle mode: the package's own skills tree is what the

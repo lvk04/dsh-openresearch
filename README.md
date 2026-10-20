@@ -122,8 +122,8 @@ Install straight from GitHub into your DeepSeek Harness profile, the same way
    ways: those 16 skills come *only* from this package, and they disappear again
    if you drop the bundle entry.
 
-   pnpm installs a copy, not a link — editing a checkout does not reach the
-   running app until you reinstall and restart (Method C).
+   A GitHub install is a snapshot: pnpm fetches a copy, so editing your checkout
+   does not reach the running app. Method C links instead.
 
 ---
 
@@ -150,7 +150,16 @@ If working from a local checkout and wanting to wire it into the profile as a lo
 node scripts/install.mjs --mode bundle
 ```
 
-Adds `dsh-openresearch` as a local `file:` dependency in the profile's `package.json` and runs `pnpm install`. Restart DeepSeek Harness to activate.
+Adds `dsh-openresearch` as a local dependency in the profile's `package.json` and
+runs `pnpm install`. Restart DeepSeek Harness to activate.
+
+The spec is a relative `file:` path, or `link:` when the profile and the checkout
+sit on different drives — never `file:` followed by an absolute path, which pnpm
+10 resolves against the profile directory on Windows and dies on with `ENOENT`
+(`<profile>\D:\...`). Expect a link on Windows, where the profile lives on `C:`
+and code usually does not: the profile then sees the working tree rather than a
+snapshot, so a rebuilt `skills/` reaches it on the next restart without a
+reinstall.
 
 Set `PNPM_BIN` if `pnpm` is not on `PATH`. The install runs `pnpm` through the shell deliberately: Node cannot spawn a `.cmd` directly on Windows, and `cmd.exe` also avoids the PowerShell execution policies that block the `pnpm.ps1` shim.
 
@@ -215,13 +224,18 @@ byte-for-byte and print the number of changed, missing, and stale skills.
 node --test
 ```
 
-36 tests: frontmatter and module-index parsing, the authored/generated merge, the
+38 tests: frontmatter and module-index parsing, the authored/generated merge, the
 offline integrity gate, installer guards (mutual exclusion, refusing to overwrite
-a foreign skill directory, idempotency, dry-run leaving no trace), receipt-driven
-uninstall, drift detection, the bundle adapter against a stubbed host package
-(provider options, plus the missing-skills branch), and the figure cropper
-against a generated PDF fixture — including the regression where a full-width
-caption made a naive text-gap search pick the wrong region.
+a foreign skill directory, idempotency, dry-run leaving no trace), the dependency
+spec's portability, receipt-driven uninstall, drift detection, the bundle adapter
+against a stubbed host package (provider options, plus the missing-skills branch),
+and the figure cropper against a generated PDF fixture — including the regression
+where a full-width caption made a naive text-gap search pick the wrong region.
+
+Two of those encode the ways CI and a developer machine differ, because both
+were found by the first CI run rather than by the suite: `--help` must work
+without `uv` installed, and the freshness check must skip — loudly — where the
+`orx` CLI is absent instead of failing or passing vacuously.
 
 ## Uninstall
 
@@ -253,9 +267,10 @@ mount, the installer (install, status, verify, uninstall), the skill builder bot
 online and offline, and the figure cropper.
 
 macOS and Linux are supported by design — a POSIX `~/.local/bin` shim, no
-`PATHEXT`, `uv` for Python — and CI is configured for Ubuntu, but **those paths
-have not been executed**: no job has run yet. Treat them as unverified until the
-workflow has run once.
+`PATHEXT`, `uv` for Python — and CI runs the suite on Ubuntu as well as Windows
+at Node 22 and 24, with `pnpm` and `uv` installed so the bundle and cropper tests
+run for real there rather than skipping. The POSIX paths are covered by CI but
+have not been exercised interactively.
 
 ## Literature research on alphaXiv
 
