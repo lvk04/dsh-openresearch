@@ -1,0 +1,51 @@
+{
+  "name": "dsh-openresearch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DeepSeek Harness method pack: mounts the OpenResearch (`orx`) research skills into DSH sessions.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lvk04/dsh-openresearch.git"
+  },
+  "homepage": "https://github.com/lvk04/dsh-openresearch",
+  "main": "src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "skills",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "sync": "node scripts/sync-skills.mjs",
+    "check": "node scripts/sync-skills.mjs --check",
+    "figure": "node scripts/paper-figure.mjs",
+    "install:live": "node scripts/install.mjs --mode live",
+    "install:bundle": "node scripts/install.mjs --mode bundle",
+    "status": "node scripts/install.mjs --status",
+    "uninstall": "node scripts/install.mjs --uninstall"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-skill-filesystem": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-skill-filesystem": {
+      "optional": true
+    }
+  }
+}

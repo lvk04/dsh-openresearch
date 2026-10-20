@@ -1,0 +1,14 @@
+# dsh-openresearch bundle patch.
+#
+# Mounts an *isolated* filesystem skill provider whose only root is this
+# package's generated `skills/` tree. It is isolated on purpose: the profile
+# already has the default provider scanning the project and user skill roots, so
+# a second default-scanning provider would surface every skill twice. With
+# `includeDefaultRoots: false`, the registry sees exactly one provider per root.
+#
+# Activation requires an app restart: bundles are composed at process start.
+# Prefer `node scripts/install.mjs --mode live` when you want the skills in the
+# running session without restarting (they land in the watched user root).
+- insert:
+    - id: openresearch-skills
+      name: 'dsh-openresearch'
