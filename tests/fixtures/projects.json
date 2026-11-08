@@ -1,0 +1,9 @@
+[
+  {
+    "id": "demo_nanochat_v1",
+    "name": "nanochat (demo)",
+    "paperId": null,
+    "path": "<repo>",
+    "baselineBranch": "main"
+  }
+]

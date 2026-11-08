@@ -1,0 +1,7 @@
+CPU Apple-Silicon end-to-end baseline  (idle)  [local]
+  id:       demo_nanochat_cpu_v1
+  branch:   orx/cpu-apple-silicon-end-to-end-baseline
+  parent:   — (root experiment)
+  command:  bash runs/runcpu.sh
+  last run: demo_nanochat_run_v1 (done, commit dae919e, ran 3h44m, updated 30d ago)
+  commit:   dae919e9b6f6edd3bdb14a514dd1e451781682f8

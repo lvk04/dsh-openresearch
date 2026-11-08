@@ -1,0 +1,20 @@
+This is the path to the full log file: <repo>
+It is 1080323 bytes.
+
+Here are the last 500 characters of the log file:
+ttern': 'L'}
+
+NanoChat Interactive Mode
+--------------------------------------------------
+Type 'quit' or 'exit' to end the conversation
+Type 'clear' to start a new conversation
+--------------------------------------------------
+
+Assistant:
+
+``` Paris
+Paris is a city known for its historical and cultural significance. The capital of France is Paris, a 1715,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,345,
+
+run completed successfully
+Use targeted search on this path (for example `rg PATTERN` or an editor) to inspect portions of the log. This preview is not proof of absence.
+Avoid reading the entire log file at once into the context window; search it and read only the relevant portions.

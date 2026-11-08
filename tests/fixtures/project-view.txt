@@ -1,0 +1,10 @@
+nanochat (demo) (local)
+  id:      demo_nanochat_v1
+  repo:    <repo>
+  branch:  main (baseline)
+  command: bash runs/runcpu.sh
+
+Experiments
+  demo_nanochat_cpu_v1  CPU Apple-Silicon end-to-end baseline [root]  (orx/cpu-apple-silicon-end-to-end-baseline)
+  demo_nanochat_lr_probe_v1  Muon matrix LR 2× probe (200 steps)  (orx/matrix-lr-2x-probe)
+  demo_nanochat_vocab_probe_v1  8,192-token vocabulary probe (200 steps)  (orx/vocab-8192-probe)

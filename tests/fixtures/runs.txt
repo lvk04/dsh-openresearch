@@ -1,0 +1,3 @@
+ID                    STATUS  EXPERIMENT                             COMMIT   DURATION  UPDATED
+────────────────────  ──────  ─────────────────────────────────────  ───────  ────────  ───────
+demo_nanochat_run_v1  done    CPU Apple-Silicon end-to-end baseline  dae919e  3h44m     30d ago

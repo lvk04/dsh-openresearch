@@ -23,6 +23,31 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+let resolveOrx
+try {
+  const mod = await import('../src/shared/resolve-orx.mjs')
+  resolveOrx = mod.resolveOrx
+} catch {
+  resolveOrx = (env = process.env, platform = process.platform, exists = existsSync) => {
+    const explicit = env?.ORX_BIN
+    if (explicit && exists(explicit)) return explicit
+    const isWin = platform === 'win32'
+    const names = isWin ? ['orx.exe', 'orx.cmd', 'orx'] : ['orx']
+    for (const d of (env?.PATH ?? '').split(isWin ? ';' : ':')) {
+      if (!d) continue
+      for (const n of names) {
+        const c = join(d, n)
+        if (exists(c)) return c
+      }
+    }
+    if (isWin && env?.LOCALAPPDATA) {
+      const inst = join(env.LOCALAPPDATA, 'Programs', 'OpenResearch', 'orx.exe')
+      if (exists(inst)) return inst
+    }
+    return null
+  }
+}
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SKILLS_DIR = join(ROOT, 'skills')
 const AUTHORED_DIR = join(ROOT, 'skills-src')
@@ -34,27 +59,10 @@ const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const check = process.argv.includes('--check')
 const offline = process.argv.includes('--offline')
 
-/** Locate the orx executable: $ORX_BIN, then PATH, then the Windows app install. */
+/** Locate the orx executable using the shared resolver, throwing if missing. */
 export function findOrx() {
-  const explicit = process.env.ORX_BIN
-  if (explicit && existsSync(explicit)) return explicit
-  const names = process.platform === 'win32' ? ['orx.exe', 'orx.cmd', 'orx'] : ['orx']
-  for (const dir of (process.env.PATH ?? '').split(process.platform === 'win32' ? ';' : ':')) {
-    if (!dir) continue
-    for (const name of names) {
-      const candidate = join(dir, name)
-      if (existsSync(candidate)) return candidate
-    }
-  }
-  if (process.platform === 'win32') {
-    const installed = join(
-      process.env.LOCALAPPDATA ?? '',
-      'Programs',
-      'OpenResearch',
-      'orx.exe',
-    )
-    if (existsSync(installed)) return installed
-  }
+  const bin = resolveOrx(process.env, process.platform, existsSync)
+  if (bin) return bin
   throw new Error(
     'orx not found. Install OpenResearch, or set ORX_BIN to the orx executable path.',
   )

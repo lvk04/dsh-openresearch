@@ -89,6 +89,9 @@ group below has a module (`orx skill <name>`) with the full flags and rules.
 |---|---|
 | `orx up` | Open the local dashboard to import or create a local project. |
 | `orx project edit <localProjectId> [--name "<n>"] [--run-command "<cmd>"]` | Edit a local project's name or fixed run command. |
+| `orx project share <localProjectId> [--out <file> \| --publish] [--chat <chatId>... \| --no-chats] [--no-logs] [--no-artifacts]` | Only when the user asks: save the project's code, experiment tree, finished runs, logs, artifacts and chats as a `.orx` file to send to a collaborator. `--chat` narrows it to the named chats. `--publish` (only when the user asks for a link) uploads it to openresearch.sh and prints a link anyone can open; publishing again updates the same link. |
+| `orx project unpublish <localProjectId>` | Delete the project's published link and its file. |
+| `orx project import <file.orx \| link> [--path <dir>]` | Open a shared `.orx` file or an `openresearch.sh/p/...` link as a new local project with its tree, runs and chosen chats. |
 | `orx create-experiment <localProjectId> --title "<t>" [...]` | Add a local experiment node; prints its Git branch. |
 | `orx compute status` / `show <backend>` / `test <backend>` | Inspect machine-wide compute configuration and readiness. |
 | `orx compute configure <backend> --help` / `default set <backend>` / `connect <backend>` | Configure compute or authenticate; load `orx-compute`. |
@@ -96,9 +99,8 @@ group below has a module (`orx skill <name>`) with the full flags and rules.
 | `orx compute [--gpu <id>] [--count <n>] [--provider <name>]` / `orx compute --cpu` | List the GPU/CPU compute catalog. |
 | `orx instance create <orgId> (--gpu <id> … \| --cpu <flavor> …)` | Spin up a standalone instance in an org; see `orx-instances`. |
 | `orx exp status/run/cancel/wait/wake <localExpId>` | Inspect, run, cancel, wait on, or register a wake-up for a local experiment node. |
-| `orx exp move/archive/unarchive <localExpId>` | Re-parent, hide, or restore experiment nodes; see `orx-experiment-tree`. |
+| `orx exp move/archive/unarchive/delete <localExpId>` | Re-parent, hide, restore, or permanently delete experiment nodes; see `orx-experiment-tree`. |
 | `orx exp desc <expId> [--set "<text>" \| --stdin]` | Read or overwrite the experiment's description. |
-| `orx agent spawn "<task>" [--title "<t>"] [--stdin] [--no-wake]` | Delegate an independent task to a helper session; see `orx-agent-delegation`. |
 
 To **read or edit** a node's code—including diffing what a run changed—use plain
 Git in the local session worktree. See the `orx-git` module.
@@ -112,7 +114,7 @@ Use before any web search for academic/research queries (paper, author, blog, mo
 | `orx discover openalex "<query>"` | Search the cross-disciplinary OpenAlex scholarly graph. |
 | `orx discover biorxiv "<query>"` | Search bioRxiv preprints through OpenAlex's bioRxiv index. |
 | `orx discover pubmed "<query>"` | Search PubMed biomedical literature through NCBI E-utilities. |
-| `orx paper <id\|url> [--source ...] [--full]` | Fetch a paper: alphaXiv report with automatic full-text fallback (`--full` forces raw text), or OpenAlex/bioRxiv/PubMed metadata+abstract. Source auto-detected from the id. |
+| `orx paper <id\|url> [--source <source>] [--full]` | Fetch a paper: alphaXiv report with automatic full-text fallback (`--full` forces raw text), or OpenAlex/bioRxiv/PubMed metadata+abstract. Source auto-detected from the id. |
 
 ### Skills & templates — module `orx-customize`
 | Command | What it does |
@@ -124,7 +126,7 @@ Use before any web search for academic/research queries (paper, author, blog, mo
 | Command | What it does |
 |---|---|
 | `orx skill [name[/resource]]` | Print this overview, one bundled module, or a lazily loaded module resource such as `compute/hf`. |
-| `orx feedback --kind <bug\|feature_request\|frustration> --summary ... --details ...` | Report a meaningful OpenResearch bug, feature request, or user frustration to its maintainers. See the `orx-feedback` module. |
+| `orx feedback --kind <bug\|feature_request\|frustration> --summary <summary> --details <details>` | Report a meaningful OpenResearch bug, feature request, or user frustration to its maintainers. See the `orx-feedback` module. |
 
 ## Modules
 
@@ -136,7 +138,7 @@ list, with one-line descriptions, is printed at the end of `orx skill` output):
 - **orx-compute** — launch and monitor runs; after resolving the backend, read its bundled reference.
 - **orx-instances** — create persistent standalone machines for manual work.
 - **orx-git** — read, edit, and diff a node's code with plain git.
-- **orx-agent-delegation** — delegate independent work to helper sessions safely.
+- **orx-agent-delegation** — delegate to other models and chats with orx's MCP tools.
 - **orx-logs** — retrieve persisted run output for progress, debugging, or measurements.
 - **orx-results** — interpret, compare, and summarize measured experiment outcomes.
 - **orx-reports** — write durable research outputs into the project's artifacts directory.
@@ -167,10 +169,10 @@ the round with another sibling, **promote** the winner and descend, or **stop**.
 
 Bundled modules (orx skill <name>):
   orx-create           Initialize a project with `orx up` and add experiment nodes with `orx create-experiment`. Use when starting a project or experiment, when the tree is empty, or when choosing a baseline, parent, or run command.
-  orx-experiment-tree  Plan and drive the experiment tree: first-launch setup, fixed run contract, frozen nodes, stacked-bush tree shape, branch/launch/wait/promote, repair limits, notes, and turn summaries. Use before creating or changing experiments, launching a first run, deciding what to try next, handling a completed run, or reporting experiment progress.
+  orx-experiment-tree  Plan and drive the experiment tree: first-launch setup, fixed run contract, frozen nodes, stacked-bush tree shape, branch/launch/reconcile/promote, repair limits, notes, and turn summaries. Use before creating or changing experiments, launching a first run, deciding what to try next, handling a completed run, or reporting experiment progress.
   orx-git              Read, edit, commit, and diff experiment code; coordinate shared worktrees and preserve frozen branch history. Use before branch work, when starting work alongside other sessions, comparing nodes, preparing a run, repairing a provisional node, or diagnosing stale code.
-  orx-agent-delegation Create independent project chats with `orx agent spawn` using the user's New Chat settings. Covers standalone opening messages, project selection, worktrees, and compute authorization. Use before creating another chat.
-  orx-compute          Launch and monitor experiment runs and route guidance for hf, modal, k8s/Kubernetes, ssh, slurm, ray, OpenResearch, Tinker, and local backends. Covers the fixed run contract, sizing, cancellation, and wait versus wake. Use before any launch or relaunch, when authoring a k8s manifest, choosing or switching compute, or handling an OOM, stall, or timeout; then read one backend reference.
+  orx-agent-delegation Delegate tasks to other models and chats with the orx MCP server's `delegate`, `wait`, `subscribe` and `answer` tools. Covers standalone briefs, worktrees, compute authorization, nesting and questions. Use before delegating or opening another chat.
+  orx-compute          Launch and monitor experiment runs and route guidance for hf, modal, k8s/Kubernetes, ssh, slurm, ray, vercel, OpenResearch, Tinker, and local backends. Covers the fixed run contract, sizing, cancellation, and result messages. Use before any launch or relaunch, when authoring a k8s manifest, choosing or switching compute, or handling an OOM, stall, or timeout; then read one backend reference.
   orx-instances        Create standalone OpenResearch compute instances with `orx instance create`. Use when the user wants a persistent machine for manual or ad-hoc work rather than an experiment run.
   orx-logs             Locate and read persisted experiment output with `orx logs`. Invoke when inspecting run progress, debugging a run failure, or retrieving recorded configuration and measurements; use `orx-results` to interpret the findings.
   orx-results          Interpret and summarize measured experiment results. Invoke before reporting measured results, including summarizing a completed run, comparing runs, evaluating an outcome, or recommending a next experiment from run evidence; retrieve missing output with `orx-logs`.
