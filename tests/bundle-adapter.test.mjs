@@ -24,7 +24,7 @@ function install(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }))
 
   mkdirSync(join(dir, 'src'), { recursive: true })
-  cpSync(join(ROOT, 'src', 'index.mjs'), join(dir, 'src', 'index.mjs'))
+  cpSync(join(ROOT, 'src'), join(dir, 'src'), { recursive: true })
   cpSync(join(ROOT, 'skills'), join(dir, 'skills'), { recursive: true })
 
   const host = join(dir, 'node_modules', '@deepseek-ai', 'dsh-skill-filesystem')
@@ -101,6 +101,46 @@ test('apply skips registration when the skills tree is missing', async (t) => {
   assert.equal(stub.calls.length, 0)
   assert.equal(warnings.length, 1)
   assert.match(warnings[0], /sync-skills\.mjs/)
+})
+
+test('apply registers a systemPrompt section that returns a synchronous string (never Promise)', async (t) => {
+  const box = install(t)
+  const mod = await import(pathToFileURL(box.adapter).href)
+
+  let registeredSection = null
+
+  const ctx = {
+    skills: { registerProvider: () => {} },
+    effect: (fn) => fn(),
+    inject: (deps, callback) => {
+      const subCtx = {
+        effect: (fn) => fn(),
+        systemPrompt: {
+          section: (section) => {
+            registeredSection = section
+          },
+        },
+        tools: { register: () => {} },
+        get: () => ({ register: () => {} }),
+      }
+      callback(subCtx)
+    },
+  }
+
+  mod.apply(ctx)
+
+  assert.ok(registeredSection, 'systemPrompt.section was called')
+  assert.equal(registeredSection.name, 'openresearch-discipline')
+  assert.equal(typeof registeredSection.text, 'function')
+
+  // Calling text() must return a synchronous string, NOT a Promise
+  const res = registeredSection.text({ agent: { session: {} } })
+  assert.equal(typeof res, 'string', 'must return a string')
+  assert.notEqual(res, null, 'must not return null')
+  assert.equal(typeof res.then, 'undefined', 'must not be a Promise')
+  // Crucial invariant: res.indexOf must be a function and not throw
+  assert.equal(typeof res.indexOf, 'function')
+  assert.equal(res.indexOf('{{'), -1)
 })
 
 test('the bundle patch inserts exactly this package', () => {
