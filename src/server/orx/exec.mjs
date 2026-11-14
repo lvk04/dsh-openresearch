@@ -2,7 +2,7 @@
  * Low-level execution wrapper for the orx CLI.
  */
 import { spawn } from 'node:child_process'
-import { resolveOrx, orxSpawnTarget } from '../../shared/resolve-orx.mjs'
+import { resolveOrx, orxSpawnTarget, dereferenceBatchTarget } from '../../shared/resolve-orx.mjs'
 
 const ANSI_REGEX = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
 
@@ -34,13 +34,14 @@ export async function runOrx(args = [], options = {}) {
     binPath,
   } = options
 
-  const bin = binPath ?? resolveOrx(env)
-  if (!bin) {
+  const rawBin = binPath ?? resolveOrx(env)
+  if (!rawBin) {
     const err = new Error('orx binary not found')
     err.code = 'ORX_MISSING'
     throw err
   }
 
+  const bin = dereferenceBatchTarget(rawBin)
   const target = orxSpawnTarget(bin)
   const cmd = target.file
   let spawnArgs = []

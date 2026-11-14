@@ -1,7 +1,7 @@
 /**
  * Pure resolver for the orx binary path and invocation target.
  */
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 /**
@@ -76,4 +76,38 @@ export function orxSpawnTarget(binPath, platform = process.platform) {
     argsPrefix: [],
     isBatch: false,
   }
+}
+
+/**
+ * If a resolved binary path is a Windows batch file (.cmd or .bat) that forwards to
+ * a native executable, extract and return the direct .exe path so it can be spawned
+ * silently without cmd.exe opening visible console windows.
+ *
+ * @param {string} binPath
+ * @param {NodeJS.Platform} [platform=process.platform]
+ * @param {(path: string) => boolean} [exists=existsSync]
+ * @param {(path: string) => string} [reader=readFileSync]
+ * @returns {string}
+ */
+export function dereferenceBatchTarget(
+  binPath,
+  platform = process.platform,
+  exists = existsSync,
+  reader = readFileSync,
+) {
+  if (platform !== 'win32' || !/\.(cmd|bat)$/i.test(binPath)) {
+    return binPath
+  }
+  try {
+    if (exists(binPath)) {
+      const content = reader(binPath, 'utf8')
+      const match = content.match(/"([^"]+\.exe)"/i)
+      if (match && exists(match[1])) {
+        return match[1]
+      }
+    }
+  } catch {
+    // Keep original path if reading fails
+  }
+  return binPath
 }

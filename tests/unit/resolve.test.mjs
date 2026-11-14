@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveOrx, orxSpawnTarget } from '../../src/shared/resolve-orx.mjs'
+import { resolveOrx, orxSpawnTarget, dereferenceBatchTarget } from '../../src/shared/resolve-orx.mjs'
 
 test('resolveOrx honors explicit ORX_BIN when it exists', () => {
   const env = { ORX_BIN: '/custom/bin/orx' }
@@ -66,4 +66,24 @@ test('orxSpawnTarget passes through binaries on POSIX', () => {
   assert.equal(target.isBatch, false)
   assert.equal(target.file, '/usr/local/bin/orx')
   assert.deepEqual(target.argsPrefix, [])
+})
+
+test('dereferenceBatchTarget resolves .cmd shim to native .exe target', () => {
+  const cmdPath = 'C:\\Users\\User\\.local\\bin\\orx.cmd'
+  const exePath = 'C:\\Users\\User\\AppData\\Local\\Programs\\OpenResearch\\orx.exe'
+  const exists = (p) => p === cmdPath || p === exePath
+  const reader = (p) => `@echo off\r\n"${exePath}" %*\r\n`
+
+  const dereferenced = dereferenceBatchTarget(cmdPath, 'win32', exists, reader)
+  assert.equal(dereferenced, exePath)
+})
+
+test('dereferenceBatchTarget returns original path on non-batch or when target missing', () => {
+  const exePath = 'C:\\Bin\\orx.exe'
+  assert.equal(dereferenceBatchTarget(exePath, 'win32'), exePath)
+
+  const cmdPath = 'C:\\Bin\\orx.cmd'
+  const exists = (p) => p === cmdPath
+  const reader = () => '@echo off\r\n"C:\\Missing\\orx.exe" %*\r\n'
+  assert.equal(dereferenceBatchTarget(cmdPath, 'win32', exists, reader), cmdPath)
 })

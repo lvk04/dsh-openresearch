@@ -1,6 +1,6 @@
 {
   "generatedBy": "scripts/sync-skills.mjs",
-  "orxVersion": "0.2.25",
+  "orxVersion": "0.2.26",
   "overview": "openresearch-cli",
   "modules": [
     {
