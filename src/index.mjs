@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url'
 import { apply as applyFilesystemProvider } from '@deepseek-ai/dsh-skill-filesystem'
 import { createAllTools } from './server/tools.mjs'
 import { getPromptSectionTextSync, warmupProjectsCache } from './server/context.mjs'
-import { registerApiRoutes } from './server/api.mjs'
 
 const skillsRoot = fileURLToPath(new URL('../skills/', import.meta.url))
 
@@ -77,6 +76,6 @@ export function apply(ctx) {
     })
 
     // 4. Optional HTTP API routes (Phase 2)
-    registerApiRoutes(ctx)
+    // registerApiRoutes(ctx)
   }
 }

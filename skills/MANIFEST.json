@@ -1,6 +1,6 @@
 {
   "generatedBy": "scripts/sync-skills.mjs",
-  "orxVersion": "0.2.26",
+  "orxVersion": "0.2.27",
   "overview": "openresearch-cli",
   "modules": [
     {
@@ -30,8 +30,8 @@
     {
       "name": "orx-compute",
       "description": "Launch and monitor experiment runs and route guidance for hf, modal, k8s/Kubernetes, ssh, slurm, ray, vercel, OpenResearch, Tinker, and local backends. Covers the fixed run contract, sizing, cancellation, and result messages. Use before any launch or relaunch, when authoring a k8s manifest, choosing or switching compute, or handling an OOM, stall, or timeout; then read one backend reference.",
-      "bytes": 9651,
-      "sha256": "581da3d4a85377bd8082eceb0a376f9b4600d7e9866166267121c448f6052ec3"
+      "bytes": 9104,
+      "sha256": "b061d0b914f895edaea7ced54ac0b3f6e5d2fc9c1fd8a9333fa60611a1827199"
     },
     {
       "name": "orx-instances",
@@ -42,8 +42,8 @@
     {
       "name": "orx-logs",
       "description": "Locate and read persisted experiment output with `orx logs`. Invoke when inspecting run progress, debugging a run failure, or retrieving recorded configuration and measurements; use `orx-results` to interpret the findings.",
-      "bytes": 1205,
-      "sha256": "122d91425496818a7bba22f7936d7126a6d92ccb854ba23487cd92ec34f5ce7a"
+      "bytes": 1143,
+      "sha256": "5fb8fd6a6bd300e75eb96f2ba74a57d73df6e70cdaffce0362ff8a83bb82c61c"
     },
     {
       "name": "orx-results",
